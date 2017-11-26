@@ -1,0 +1,19 @@
+hash: 79447bfa279eba2c284253aa4d7d0535f29f478c61e855be94d7f598b5cf5c86
+updated: 2017-11-27T23:48:53.551117754+09:00
+imports:
+- name: github.com/andybalholm/cascadia
+  version: 349dd0209470eabd9514242c688c403c0926d266
+- name: github.com/fatih/color
+  version: 570b54cabe6b8eb0bc2dfce68d964677d63b5260
+- name: github.com/pkg/errors
+  version: 645ef00459ed84a119197bfb8d8205042c6df63d
+- name: github.com/PuerkitoBio/goquery
+  version: 1a71cc719d0d5b9e4f14ae072bef08b576b0bab5
+- name: github.com/spf13/cobra
+  version: 7b2c5ac9fc04fc5efafb60700713d4fa609b777b
+- name: golang.org/x/net
+  version: 9dfe39835686865bff950a07b394c12a98ddc811
+  subpackages:
+  - html
+  - html/atom
+testImports: []
