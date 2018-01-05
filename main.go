@@ -20,22 +20,37 @@ type (
 		URL       string
 		CreatedAt time.Time
 	}
+	ArticleSlice []Article
 )
 
 var jst = time.FixedZone("Asia/Tokyo", 9*60*60)
+
+func (r ArticleSlice) Len() int {
+	return len(r)
+}
+
+func (r ArticleSlice) Less(i, j int) bool {
+	return i < j
+}
+
+func (r ArticleSlice) Swap(i, j int) {
+	r[i], r[j] = r[j], r[i]
+}
 
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("required blog name")
 		os.Exit(1)
 	}
-	start(os.Args[1])
+	run(os.Args[1])
 }
 
-func start(name string) {
+func run(name string) {
 	// url := "https://ameblo.jp/yotsuba-kids"
 	y, m, d := time.Now().Date()
-	target := time.Date(y, m, d, 0, 0, 0, 0, jst)
+	// d -= 3
+	start := time.Date(y, m, d, 0, 0, 0, 0, jst)
+	end := time.Date(y, m, d+1, 0, 0, 0, -1, jst)
 	list, err := fetchArticleList(name)
 	if err != nil {
 		fmt.Println(err)
@@ -43,7 +58,7 @@ func start(name string) {
 	}
 	articles := make([]Article, 0, len(list))
 	for _, article := range list {
-		if !article.CreatedAt.After(target) {
+		if article.CreatedAt.Before(start) || article.CreatedAt.After(end) {
 			continue
 		}
 		articles = append(articles, article)
@@ -111,12 +126,7 @@ func fetchArticle(v Article) (int, error) {
 // 記事一覧
 func fetchArticleList(name string) ([]Article, error) {
 	url := fmt.Sprintf("https://ameblo.jp/%s/entrylist.html", name)
-	// url := "https://ameblo.jp/yotsuba-kids/entrylist-2.html"
 	doc, _ := goquery.NewDocument(url)
-	// doc.Find(".contentTitle").Each(func(_ int, s *goquery.Selection) {
-	// 	url, _ := s.Attr("href")
-	// 	fmt.Println(fmt.Sprintf("[content] %s", url))
-	// })
 	articles := make([]Article, 0, 20)
 	doc.Find(".contentsList li").Each(func(_ int, li *goquery.Selection) {
 		var url, title string
@@ -143,6 +153,14 @@ func fetchArticleList(name string) ([]Article, error) {
 			CreatedAt: t,
 		})
 	})
+	// sort to reverse
+	for i := range articles {
+		if len(articles)/2 < i {
+			break
+		}
+		j := len(articles) - i - 1
+		articles[i], articles[j] = articles[j], articles[i]
+	}
 	return articles, nil
 }
 
