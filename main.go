@@ -24,6 +24,8 @@ type (
 	ArticleSlice []Article
 )
 
+const blogDomain = "ameblo.jp"
+
 var jst = time.FixedZone("Asia/Tokyo", 9*60*60)
 
 func (r ArticleSlice) Len() int {
@@ -58,7 +60,6 @@ func main() {
 }
 
 func run(name string, minusDays int) {
-	// url := "https://ameblo.jp/yotsuba-kids"
 	y, m, d := time.Now().Date()
 	d -= minusDays
 	start := time.Date(y, m, d, 0, 0, 0, 0, jst)
@@ -104,13 +105,15 @@ func run(name string, minusDays int) {
 		if _, ok := selectionMap[fmt.Sprint(i+1)]; !ok {
 			continue
 		}
-		fmt.Printf("download to %d.%s", i, article.Title)
-		succeed, err := fetchArticle(article)
-		if err != nil {
+		fmt.Printf("download to %d.%s > ", i, article.Title)
+		succeedFunc := func() {
+			fmt.Printf("*")
+		}
+		if _, err := fetchArticle(article, succeedFunc); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		fmt.Println(" > " + strings.Repeat("*", succeed))
+		fmt.Println("")
 	}
 	if err := exec.Command("open", fmt.Sprintf("./download/%04d%02d%02d", y, m, d)).Run(); err != nil {
 		fmt.Println(err)
@@ -118,8 +121,14 @@ func run(name string, minusDays int) {
 	}
 }
 
-func fetchArticle(v Article) (int, error) {
+func fetchArticle(v Article, succeedFunc func()) (int, error) {
 	succeed := 0
+	if len(v.URL) < 10 {
+		return 0, nil
+	}
+	if v.URL[0:4] != "http" {
+		v.URL = fmt.Sprintf("https://%s/%s", blogDomain, v.URL)
+	}
 	doc, _ := goquery.NewDocument(v.URL)
 	doc.Find("img").Each(func(_ int, s *goquery.Selection) {
 		url, _ := s.Attr("src")
@@ -135,6 +144,9 @@ func fetchArticle(v Article) (int, error) {
 		}
 		if ok {
 			succeed++
+			if succeedFunc != nil {
+				succeedFunc()
+			}
 		}
 	})
 	return succeed, nil
@@ -142,7 +154,7 @@ func fetchArticle(v Article) (int, error) {
 
 // 記事一覧
 func fetchArticleList(name string) ([]Article, error) {
-	url := fmt.Sprintf("https://ameblo.jp/%s/entrylist.html", name)
+	url := fmt.Sprintf("https://%s/%s/entrylist.html", blogDomain, name)
 	doc, _ := goquery.NewDocument(url)
 	articles := make([]Article, 0, 20)
 	doc.Find(".contentsList li").Each(func(_ int, li *goquery.Selection) {
