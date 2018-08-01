@@ -16,16 +16,16 @@ type (
 )
 
 // Len ...
-func (r ArticleSlice) Len() int {
-	return len(r)
+func (rs ArticleSlice) Len() int {
+	return len(rs)
 }
 
 // Less ...
-func (r ArticleSlice) Less(i, j int) bool {
-	return i < j
+func (rs ArticleSlice) Less(i, j int) bool {
+	return rs[i].CreatedAt.Unix() < rs[j].CreatedAt.Unix()
 }
 
 // Swap ...
-func (r ArticleSlice) Swap(i, j int) {
-	r[i], r[j] = r[j], r[i]
+func (rs ArticleSlice) Swap(i, j int) {
+	rs[i], rs[j] = rs[j], rs[i]
 }

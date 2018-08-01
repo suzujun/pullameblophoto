@@ -85,21 +85,21 @@ func run(name string, minusDays int) {
 			fmt.Println(err)
 			os.Exit(1)
 		}
+		pictures := make([]scraping.Picture, 0, len(urls))
 		outputPath := fmt.Sprintf("download/%s", article.CreatedAt.Format("20060102"))
-		for _, u := range urls {
-			ok, err := scraping.DownloadFile(u, outputPath)
+		for i, u := range urls {
+			createdAt := article.CreatedAt.Add(time.Second * time.Duration(i))
+			pic, err := scraping.DownloadFile(u, outputPath, &createdAt)
 			if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-			if ok {
 				fmt.Printf("*")
+			pictures = append(pictures, *pic)
 			}
-		}
 		fmt.Println("")
 	}
-	if err := exec.Command("open", fmt.Sprintf("./download/%04d%02d%02d", y, m, d)).Run(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+
+	exec.Command("open", fmt.Sprintf("./download/%04d%02d%02d", y, m, d)).Run()
 	}
-}
+

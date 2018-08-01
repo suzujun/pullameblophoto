@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"sort"
 	"strings"
 	"time"
 
@@ -23,7 +24,7 @@ var jst = time.FixedZone("Asia/Tokyo", 9*60*60)
 func FindArticleList(name string) ([]Article, error) {
 	url := fmt.Sprintf("https://%s/%s/entrylist.html", blogDomain, name)
 	doc, _ := goquery.NewDocument(url)
-	articles := make([]Article, 0, 20)
+	articles := make(ArticleSlice, 0, 20)
 	doc.Find(".contentsList li").Each(func(_ int, li *goquery.Selection) {
 		var url, title string
 		li.Find(".contentTitle").Each(func(_ int, s *goquery.Selection) {
@@ -49,14 +50,7 @@ func FindArticleList(name string) ([]Article, error) {
 			CreatedAt: t,
 		})
 	})
-	// sort to reverse
-	for i := range articles {
-		if len(articles)/2 < i {
-			break
-		}
-		j := len(articles) - i - 1
-		articles[i], articles[j] = articles[j], articles[i]
-	}
+	sort.Sort(articles)
 	return articles, nil
 }
 
@@ -91,7 +85,7 @@ func FindPictureURL(v Article) ([]string, error) {
 }
 
 // DownloadFile download for file
-func DownloadFile(fileURL, savepath string) (bool, error) {
+func DownloadFile(fileURL, savepath string, forceCreatedAt *time.Time) (*Picture, error) {
 
 	_, filename := path.Split(fileURL)
 	wk := strings.Split(filename, "?")
@@ -99,38 +93,53 @@ func DownloadFile(fileURL, savepath string) (bool, error) {
 
 	// make dir
 	if err := os.MkdirAll("./"+savepath, 0755); err != nil {
-		return false, errors.Wrapf(err, "failed to create dir, path=%s", savepath)
+		return nil, errors.Wrapf(err, "failed to create dir, path=%s", savepath)
 	}
 
 	outputPath := "./" + savepath + "/" + filename
 
 	newImage, err := os.Create(outputPath)
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to http get image, url=%s", fileURL)
+		return nil, errors.Wrapf(err, "failed to create image, path=%s", outputPath)
 	}
 	defer newImage.Close()
 
 	resp, err := http.Get(fileURL)
 	if err != nil {
-		return false, errors.Wrapf(err, "failed2 to http get image, url=%s", fileURL)
+		return nil, errors.Wrapf(err, "failed to http get image, url=%s", fileURL)
 	}
 	defer resp.Body.Close()
 
-	_, err = io.Copy(newImage, resp.Body)
+	var pic Picture
+	pic.URL = fileURL
+	pic.CreatedAt = time.Now()
+
+	writtenSize, err := io.Copy(newImage, resp.Body)
 	if err != nil {
-		return false, errors.Wrapf(err, "failed3 to http get image, url=%s", fileURL)
+		return nil, errors.Wrapf(err, "failed to bytes copy, url=%s", fileURL)
 	}
-	// fmt.Println("File size: ", b)
+	pic.Size = writtenSize
 
 	img, err := os.Open(outputPath)
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to http get image, url=%s", fileURL)
+		return nil, errors.Wrapf(err, "failed to open image, path=%s", outputPath)
 	}
-
-	_, err = jpeg.Decode(img)
+	jpg, err := jpeg.Decode(img)
 	if err != nil {
-		log.Fatal("image-error1b:", err)
+		return nil, errors.Wrapf(err, "failed to decode jpeg, path=%s", outputPath)
+	}
+	if forceCreatedAt != nil {
+		createdAt := *forceCreatedAt
+		if err := os.Chtimes(outputPath, createdAt, createdAt); err != nil {
+			return nil, errors.Wrapf(err, "failed to chtimes, path=%s", outputPath)
+		}
+		pic.CreatedAt = createdAt
 	}
 
-	return true, nil
+	if m := jpg.Bounds().Max; m.X > 0 {
+		pic.Width = m.Y
+		pic.Height = m.X
+	}
+
+	return &pic, nil
 }
