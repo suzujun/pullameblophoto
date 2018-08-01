@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"strconv"
@@ -79,12 +80,21 @@ func run(name string, minusDays int) {
 			continue
 		}
 		fmt.Printf("download to %d.%s > ", i, article.Title)
-		succeedFunc := func() {
-			fmt.Printf("*")
-		}
-		if _, err := scraping.FindArticle(article, succeedFunc); err != nil {
+		urls, err := scraping.FindPictureURL(article)
+		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
+		}
+		outputPath := fmt.Sprintf("download/%s", article.CreatedAt.Format("20060102"))
+		for _, u := range urls {
+			ok, err := scraping.DownloadFile(u, outputPath)
+			if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+			if ok {
+				fmt.Printf("*")
+			}
 		}
 		fmt.Println("")
 	}

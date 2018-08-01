@@ -60,41 +60,40 @@ func FindArticleList(name string) ([]Article, error) {
 	return articles, nil
 }
 
-// 記事内容取得
-func FindArticle(v Article, succeedFunc func()) (int, error) {
-	succeed := 0
+// FindPictureURL find picture url slice from article
+func FindPictureURL(v Article) ([]string, error) {
 	if len(v.URL) < 10 {
-		return 0, nil
+		return nil, nil
 	}
 	if v.URL[0:4] != "http" {
 		v.URL = fmt.Sprintf("https://%s/%s", blogDomain, v.URL)
 	}
-	doc, _ := goquery.NewDocument(v.URL)
-	doc.Find("img").Each(func(_ int, s *goquery.Selection) {
-		url, _ := s.Attr("src")
+	doc, err := goquery.NewDocument(v.URL)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to new document for %d", v.URL)
+	}
+	urls := make([]string, 0, 20)
+	doc.Find("img").Each(func(i int, s *goquery.Selection) {
+		url, ok := s.Attr("src")
+		if !ok {
+			log.Fatal("not found is img src", i)
+			return
+		}
 		// "https://stat.ameba.jp/user_images/"
 		// "20171122/19/yotsuba-kids/78/81/j/t02200165_0480036014075936377.jpg?cpd=110"
 		if strings.Index(url, "https://stat.ameba.jp/user_images/") != 0 {
 			// fmt.Println(fmt.Sprintf("[NG] %s", v.URL))
 			return
 		}
-		ok, err := downloadImage(url, "download/"+v.CreatedAt.Format("20060102"))
-		if err != nil {
-			fmt.Println(fmt.Sprintf("[ERROR] %+v, url=%s", err, url))
-		}
-		if ok {
-			succeed++
-			if succeedFunc != nil {
-				succeedFunc()
-			}
-		}
+		urls = append(urls, url)
 	})
-	return succeed, nil
+	return urls, nil
 }
 
-func downloadImage(imageURL, savepath string) (bool, error) {
+// DownloadFile download for file
+func DownloadFile(fileURL, savepath string) (bool, error) {
 
-	_, filename := path.Split(imageURL)
+	_, filename := path.Split(fileURL)
 	wk := strings.Split(filename, "?")
 	filename = wk[0] // remove to query string
 
@@ -107,88 +106,31 @@ func downloadImage(imageURL, savepath string) (bool, error) {
 
 	newImage, err := os.Create(outputPath)
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to http get image, url=%s", imageURL)
+		return false, errors.Wrapf(err, "failed to http get image, url=%s", fileURL)
 	}
 	defer newImage.Close()
 
-	resp, err := http.Get(imageURL)
+	resp, err := http.Get(fileURL)
 	if err != nil {
-		return false, errors.Wrapf(err, "failed2 to http get image, url=%s", imageURL)
+		return false, errors.Wrapf(err, "failed2 to http get image, url=%s", fileURL)
 	}
 	defer resp.Body.Close()
 
 	_, err = io.Copy(newImage, resp.Body)
 	if err != nil {
-		return false, errors.Wrapf(err, "failed3 to http get image, url=%s", imageURL)
+		return false, errors.Wrapf(err, "failed3 to http get image, url=%s", fileURL)
 	}
 	// fmt.Println("File size: ", b)
 
 	img, err := os.Open(outputPath)
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to http get image, url=%s", imageURL)
+		return false, errors.Wrapf(err, "failed to http get image, url=%s", fileURL)
 	}
 
 	_, err = jpeg.Decode(img)
 	if err != nil {
 		log.Fatal("image-error1b:", err)
 	}
-	// fmt.Println(">>>img:", fmt.Sprintf("%+v", jpg.Bounds()))
 
-	// file, err := os.Open(outputPath)
-	// if err != nil {
-	// 	log.Fatal("image-error1", err)
-	// }
-	// conf, _, err := image.DecodeConfig(img)
-	// if err != nil {
-	// 	log.Fatal("image-error2", err)
-	// }
-	// fmt.Printf("file=%s,Width=%d,Height=%d\n", filename, conf.Width, conf.Height)
-
-	return true, nil
-	//////////////////////////////
-
-	// resp, err = http.Get(imageURL)
-	// if err != nil {
-	// 	return false, errors.Wrapf(err, "failed to http get image, url=%s", imageURL)
-	// }
-	// if resp.StatusCode != 200 {
-	// 	return false, errors.Wrapf(err, "failed to http status, code=%d", resp.StatusCode)
-	// }
-	// if resp.ContentLength < 10000 {
-	// 	fmt.Println("[INFO] ignore contentLength min:", resp.ContentLength, imageURL)
-	// 	return false, nil
-	// }
-
-	// body, err := ioutil.ReadAll(resp.Body)
-	// if err != nil {
-	// 	return false, errors.Wrapf(err, "failed to http get image stream, url=%s", imageURL)
-	// }
-
-	// _, filename := path.Split(imageURL)
-	// wk := strings.Split(filename, "?")
-	// filename = wk[0] // remove to query string
-
-	// // make dir
-	// if err := os.MkdirAll("./"+savepath, 0755); err != nil {
-	// 	return false, errors.Wrapf(err, "failed to create dir, path=%s", savepath)
-	// }
-
-	// file, err := os.OpenFile("./"+savepath+"/"+filename, os.O_CREATE|os.O_WRONLY, 0666)
-	// if err != nil {
-	// 	return false, errors.Wrapf(err, "failed to open file error, path=%s", "./"+savepath+"/"+filename)
-	// }
-
-	// defer func() {
-	// 	// conf, _, err := image.DecodeConfig(file)
-	// 	// if err != nil {
-	// 	// 	log.Fatal("image-error", err)
-	// 	// }
-	// 	// fmt.Printf("file=%s,Width=%d,Height=%d\n", filename, conf.Width, conf.Height)
-	// 	file.Close()
-	// }()
-
-	// if _, err := file.Write(body); err != nil {
-	// 	return false, errors.Wrapf(err, "failed to write file")
-	// }
 	return true, nil
 }
