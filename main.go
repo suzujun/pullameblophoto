@@ -1,14 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"log"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/suzujun/pullameblophoto/scraping"
 )
 
@@ -91,15 +93,39 @@ func run(name string, minusDays int) {
 			createdAt := article.CreatedAt.Add(time.Second * time.Duration(i))
 			pic, err := scraping.DownloadFile(u, outputPath, &createdAt)
 			if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-				fmt.Printf("*")
-			pictures = append(pictures, *pic)
+				fmt.Println(err)
+				os.Exit(1)
 			}
+			fmt.Printf("*")
+			pictures = append(pictures, *pic)
+		}
+		articles[i].Pictures = pictures
 		fmt.Println("")
 	}
 
+	jsonPath := fmt.Sprintf("download/%s/export.json", start.Format("20060102"))
+	exportJSON(jsonPath, articles)
+
 	exec.Command("open", fmt.Sprintf("./download/%04d%02d%02d", y, m, d)).Run()
+}
+
+func exportJSON(exportPath string, articles []scraping.Article) error {
+
+	// if raw, err := ioutil.ReadFile("./sample.json"); err == nil {
+	// 	var before FeatureCollection
+	// 	if err := json.Unmarshal(raw, &before); err == nil {
+	// 		// merge data
+	// 	}
+	// }
+
+	data := map[string]interface{}{
+		"articles":  articles,
+		"createdAt": time.Now(),
+	}
+	bs, err := json.Marshal(data)
+	if err != nil {
+		return errors.Wrap(err, "failed to json parse error")
 	}
 
+	return ioutil.WriteFile(exportPath, bs, 0644)
+}

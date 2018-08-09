@@ -96,7 +96,11 @@ func DownloadFile(fileURL, savepath string, forceCreatedAt *time.Time) (*Picture
 		return nil, errors.Wrapf(err, "failed to create dir, path=%s", savepath)
 	}
 
-	outputPath := "./" + savepath + "/" + filename
+	var prefix string
+	if forceCreatedAt != nil {
+		prefix = forceCreatedAt.Format("20060102T150405_")
+	}
+	outputPath := "./" + savepath + "/" + prefix + filename
 
 	newImage, err := os.Create(outputPath)
 	if err != nil {

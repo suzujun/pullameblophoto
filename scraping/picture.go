@@ -7,10 +7,10 @@ import (
 type (
 	// Picture 写真
 	Picture struct {
-		Size      int64
-		URL       string
-		Width     int
-		Height    int
-		CreatedAt time.Time
+		Size      int64     `json:"size"`
+		URL       string    `json:"url"`
+		Width     int       `json:"width"`
+		Height    int       `json:"height"`
+		CreatedAt time.Time `json:"createdAt"`
 	}
 )

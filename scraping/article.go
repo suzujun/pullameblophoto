@@ -7,9 +7,10 @@ import (
 type (
 	// Article 記事
 	Article struct {
-		Title     string
-		URL       string
-		CreatedAt time.Time
+		Title     string    `json:"title"`
+		URL       string    `json:"url"`
+		Pictures  []Picture `json:"pictures"`
+		CreatedAt time.Time `json:"createdAt"`
 	}
 	// ArticleSlice 記事リスト
 	ArticleSlice []Article
