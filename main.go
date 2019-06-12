@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,6 +13,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/suzujun/pullameblophoto/scraping"
+	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
 )
 
 var jst = time.FixedZone("Asia/Tokyo", 9*60*60)
@@ -89,15 +92,29 @@ func run(name string, minusDays int) {
 		}
 		pictures := make([]scraping.Picture, 0, len(urls))
 		outputPath := fmt.Sprintf("download/%s", article.CreatedAt.Format("20060102"))
-		for i, u := range urls {
+
+		ctx := context.Background()
+		s := semaphore.NewWeighted(5)
+		group, _ := errgroup.WithContext(ctx)
+
+		for i := range urls {
+			url := urls[i]
 			createdAt := article.CreatedAt.Add(time.Second * time.Duration(i))
-			pic, err := scraping.DownloadFile(u, outputPath, &createdAt)
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-			fmt.Printf("*")
-			pictures = append(pictures, *pic)
+			group.Go(func() error {
+				s.Acquire(context.Background(), 1)
+				defer s.Release(1)
+				pic, err := scraping.DownloadFile(url, outputPath, &createdAt)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("*")
+				pictures = append(pictures, *pic)
+				return nil
+			})
+		}
+		if err := group.Wait(); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
 		}
 		articles[i].Pictures = pictures
 		fmt.Println("")

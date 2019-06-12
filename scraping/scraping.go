@@ -73,10 +73,7 @@ func FindPictureURL(v Article) ([]string, error) {
 			log.Fatal("not found is img src", i)
 			return
 		}
-		// "https://stat.ameba.jp/user_images/"
-		// "20171122/19/yotsuba-kids/78/81/j/t02200165_0480036014075936377.jpg?cpd=110"
 		if strings.Index(url, "https://stat.ameba.jp/user_images/") != 0 {
-			// fmt.Println(fmt.Sprintf("[NG] %s", v.URL))
 			return
 		}
 		urls = append(urls, url)
