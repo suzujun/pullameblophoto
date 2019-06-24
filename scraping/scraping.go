@@ -1,6 +1,7 @@
 package scraping
 
 import (
+	"encoding/json"
 	"fmt"
 	"image/jpeg"
 	"io"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pkg/errors"
+	"github.com/robertkrimen/otto"
 )
 
 const blogDomain = "ameblo.jp"
@@ -24,32 +26,67 @@ var jst = time.FixedZone("Asia/Tokyo", 9*60*60)
 func FindArticleList(name string) ([]Article, error) {
 	url := fmt.Sprintf("https://%s/%s/entrylist.html", blogDomain, name)
 	doc, _ := goquery.NewDocument(url)
-	articles := make(ArticleSlice, 0, 20)
-	doc.Find(".contentsList li").Each(func(_ int, li *goquery.Selection) {
-		var url, title string
-		li.Find(".contentTitle").Each(func(_ int, s *goquery.Selection) {
-			url, _ = s.Attr("href")
-			title = s.Text()
-			// fmt.Println(fmt.Sprintf("[content01] %s", url))
-		})
-		var timeStr string
-		li.Find("time").Each(func(_ int, s *goquery.Selection) {
-			timeStr = s.Text() // i.g. "2017-11-21 13:31:04"
-			// fmt.Println(fmt.Sprintf("[content02] %s", s.Text()))
-		})
-		format := "2006-01-02 15:04:05" //Z07:00"
-		t, err := time.ParseInLocation(format, timeStr, jst)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+	var script string
+	doc.Find("script").Each(func(_ int, s *goquery.Selection) {
+		if !strings.HasPrefix(s.Text(), "window.INIT_DATA") {
 			return
 		}
-		articles = append(articles, Article{
-			Title:     title,
-			URL:       url,
-			CreatedAt: t,
-		})
+		end := strings.Index(s.Text(), ";")
+		script = "var data=" + s.Text()[17:end]
 	})
+	vm := otto.New()
+	_, err := vm.Run(script + `;
+	var values = []
+	var obj = data.entryState.entryMap;
+	Object.keys(obj).forEach(function (key) {
+		values.push({
+			"Id": obj[key].entry_id,
+			"Title": obj[key].entry_title,
+			"CreatedAt": obj[key].entry_created_datetime,
+		});
+	});
+	var jsonstr = JSON.stringify(values);
+	/*values.forEach(function(v, i){
+		console.log(">>>jsout", i, v.Id, v.Title, v.CreatedAt);
+	});*/`)
+	if err != nil {
+		fmt.Println("failed to parse script error", err.Error())
+		return nil, err
+	}
+	res, err := vm.Get("jsonstr")
+	if err != nil {
+		fmt.Println("failed to get script values error", err.Error())
+		return nil, err
+	}
+	jsonstr, err := res.ToString()
+	if err != nil {
+		fmt.Println("failed to script values to string error", err.Error())
+		return nil, err
+	}
+	values := []struct {
+		ID        int64
+		Title     string
+		CreatedAt string
+	}{}
+	err = json.Unmarshal([]byte(jsonstr), &values)
+	if err != nil {
+		fmt.Println("failed to get script values error", err.Error())
+		return nil, err
+	}
+	articles := make(ArticleSlice, len(values))
+	for i, v := range values {
+		t, err := time.Parse(time.RFC3339Nano, v.CreatedAt)
+		if err != nil {
+			fmt.Println("failed to parse createdAt error", err)
+			os.Exit(1)
+			return nil, err
+		}
+		articles[i] = Article{
+			Title:     v.Title,
+			URL:       fmt.Sprintf("https://%s/%s/entry-%d.html", blogDomain, name, v.ID),
+			CreatedAt: t,
+		}
+	}
 	sort.Sort(articles)
 	return articles, nil
 }

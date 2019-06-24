@@ -11,3 +11,4 @@ import:
   subpackages:
   - errgroup
   - semaphore
+- package: github.com/robertkrimen/otto

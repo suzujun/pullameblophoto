@@ -1,5 +1,5 @@
-hash: d25197d080f3c293432d42139e1dd6e98daef14a2ca874874c70d7dffc191e4d
-updated: 2019-01-24T20:38:32.999533+09:00
+hash: a041f03061a7a1ec8d341b9f556853f3b019b67dbcd5bc277ccb3f7df9ad22ab
+updated: 2019-06-24T22:59:13.840169+09:00
 imports:
 - name: github.com/andybalholm/cascadia
   version: 349dd0209470eabd9514242c688c403c0926d266
@@ -15,8 +15,17 @@ imports:
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/PuerkitoBio/goquery
   version: 1a71cc719d0d5b9e4f14ae072bef08b576b0bab5
+- name: github.com/robertkrimen/otto
+  version: 15f95af6e78dcd2030d8195a138bd88d4f403546
+  subpackages:
+  - ast
+  - dbg
+  - file
+  - parser
+  - registry
+  - token
 - name: github.com/spf13/cobra
-  version: ef82de70bb3f60c65fb8eebacbb2d122ef517385
+  version: f2b07da1e2c38d5f12845a4f607e2e1018cbb1f5
 - name: github.com/spf13/pflag
   version: 24fa6976df40757dce6aea913e7b81ade90530e1
 - name: golang.org/x/net
@@ -25,12 +34,16 @@ imports:
   - html
   - html/atom
 - name: golang.org/x/sync
-  version: 37e7f081c4d4c64e13b10787722085407fe5d15f
+  version: 112230192c580c3556b8cee6403af37a4fc5f28c
   subpackages:
   - errgroup
   - semaphore
 - name: golang.org/x/sys
-  version: b90733256f2e882e81d52f9126de08df5615afd9
+  version: d432491b91382bba9c2a91776aa47c9430183a6f
   subpackages:
   - unix
+- name: gopkg.in/sourcemap.v1
+  version: 6e83acea0053641eff084973fee085f0c193c61a
+  subpackages:
+  - base64vlq
 testImports: []
