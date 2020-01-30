@@ -23,8 +23,14 @@ const blogDomain = "ameblo.jp"
 var jst = time.FixedZone("Asia/Tokyo", 9*60*60)
 
 // 記事一覧取得
-func FindArticleList(name string) ([]Article, error) {
-	url := fmt.Sprintf("https://%s/%s/entrylist.html", blogDomain, name)
+func FindArticleList(name string, index int) ([]Article, error) {
+	var url string
+	if index <= 1 {
+		url = fmt.Sprintf("https://%s/%s/entrylist.html", blogDomain, name)
+	} else {
+		url = fmt.Sprintf("https://%s/%s/entrylist-%d.html", blogDomain, name, index)
+	}
+	println(">>>url", url)
 	doc, _ := goquery.NewDocument(url)
 	var script string
 	doc.Find("script").Each(func(_ int, s *goquery.Selection) {

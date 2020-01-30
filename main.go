@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 	"time"
 
@@ -20,33 +20,31 @@ import (
 var jst = time.FixedZone("Asia/Tokyo", 9*60*60)
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("required blog name")
+	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	minusDays := fs.Int("d", 0, "Minus days")
+	searchMaxDays := fs.Int("max", 1, "Maximum number of pages to search")
+	name := os.Args[1]
+	fs.Parse(os.Args[2:])
+	if len(name) == 0 {
+		fmt.Fprintln(os.Stderr, "required blog name")
 		os.Exit(1)
 	}
-	var minusDaysIndex int
-	var minusDays int
-	for i, v := range os.Args {
-		if v == "-d" || v == "--minus_days" {
-			minusDaysIndex = i
-		} else if minusDaysIndex == i-1 {
-			if num, err := strconv.Atoi(v); err == nil {
-				minusDays = num
-			}
-		}
-	}
-	run(os.Args[1], minusDays)
+	run(name, *minusDays, *searchMaxDays)
 }
 
-func run(name string, minusDays int) {
+func run(name string, minusDays, searchMaxDays int) {
 	y, m, d := time.Now().Date()
 	d -= minusDays
 	start := time.Date(y, m, d, 0, 0, 0, 0, jst)
 	end := time.Date(y, m, d+1, 0, 0, 0, -1, jst)
-	list, err := scraping.FindArticleList(name)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+	list := make([]scraping.Article, 0, 10)
+	for i := 1; i <= searchMaxDays; i++ {
+		as, err := scraping.FindArticleList(name, i)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		list = append(list, as...)
 	}
 	articles := make([]scraping.Article, 0, len(list))
 	for _, article := range list {
